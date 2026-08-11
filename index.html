@@ -295,7 +295,6 @@ Lanzamiento Goal Craft Racing
     </div>
 
     <script>
-        // Registro automático del Service Worker para PWA
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/pwabuilder-sw.js')
                 .then(() => console.log('Service Worker registrado con éxito.'))
@@ -339,7 +338,7 @@ Lanzamiento Goal Craft Racing
             x: 300, y: 750,
             angle: -Math.PI / 2,
             speed: 0,
-            maxSpeed: 6.5,
+            maxSpeed: 6.0,
             accel: 0.1,
             lap: 1,
             turboFuel: 100,
@@ -551,7 +550,7 @@ Lanzamiento Goal Craft Racing
 
             let currentMax = me.maxSpeed;
             if (controls.turbo && me.turboFuel > 0) {
-                currentMax = me.maxSpeed * 1.8;
+                currentMax = me.maxSpeed * 1.6;
                 me.turboFuel -= 0.6;
             } else {
                 if (me.turboFuel < 100) me.turboFuel += 0.1;
@@ -571,8 +570,8 @@ Lanzamiento Goal Craft Racing
                 let angleDiff = targetAngle - opponent.angle;
                 while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
                 while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
-                opponent.angle += Math.max(-0.04, Math.min(0.04, angleDiff));
-                opponent.speed = 5.8;
+                opponent.angle += Math.max(-0.035, Math.min(0.035, angleDiff));
+                opponent.speed = 4.2; // Máquina más lenta para que puedas ganar bien
                 opponent.x += Math.sin(opponent.angle) * opponent.speed;
                 opponent.y -= Math.cos(opponent.angle) * opponent.speed;
                 if (Math.hypot(opponent.x - targetWp.x, opponent.y - targetWp.y) < 70) {
@@ -622,9 +621,17 @@ Lanzamiento Goal Craft Racing
         function drawTrackAndCars() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            ctx.fillStyle = '#161b22';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.save();
+            // Cámara centrada en tu auto
+            let cameraX = canvas.width / 2 - me.x;
+            let cameraY = canvas.height / 2 - me.y;
+            ctx.translate(cameraX, cameraY);
 
+            // Fondo de la pista cheto
+            ctx.fillStyle = '#161b22';
+            ctx.fillRect(-1000, -1000, 3000, 3000);
+
+            // Pista principal de carreras
             ctx.beginPath();
             ctx.moveTo(trackWaypoints[0].x, trackWaypoints[0].y);
             for (let i = 1; i < trackWaypoints.length; i++) {
@@ -632,29 +639,41 @@ Lanzamiento Goal Craft Racing
             }
             ctx.closePath();
             ctx.strokeStyle = '#2d3748';
-            ctx.lineWidth = 90;
+            ctx.lineWidth = 110;
             ctx.lineJoin = 'round';
             ctx.stroke();
 
-            ctx.strokeStyle = '#21262d';
-            ctx.lineWidth = 74;
+            ctx.strokeStyle = '#1a202c';
+            ctx.lineWidth = 90;
             ctx.stroke();
 
+            // Bordes y detalles deportivos de pista
             ctx.strokeStyle = '#ff3366';
-            ctx.lineWidth = 8;
-            ctx.setLineDash([15, 15]);
+            ctx.lineWidth = 6;
+            ctx.setLineDash([20, 20]);
             ctx.stroke();
             ctx.setLineDash([]);
 
+            // Línea central de la pista
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+            ctx.lineWidth = 4;
+            ctx.setLineDash([12, 12]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Línea de Meta con diseño de damero / blanca profesional
             ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 8;
+            ctx.lineWidth = 10;
             ctx.beginPath();
-            ctx.moveTo(230, 750);
-            ctx.lineTo(370, 750);
+            ctx.moveTo(220, 750);
+            ctx.lineTo(380, 750);
             ctx.stroke();
 
+            // Dibujar autos
             drawF1Car(me.x, me.y, me.angle, me.color, me.name);
             drawF1Car(opponent.x, opponent.y, opponent.angle, opponent.color, opponent.name);
+
+            ctx.restore();
         }
 
         function drawF1Car(x, y, angle, color, name) {
