@@ -295,6 +295,13 @@ Lanzamiento Goal Craft Racing
     </div>
 
     <script>
+        // Registro automático del Service Worker para PWA
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/pwabuilder-sw.js')
+                .then(() => console.log('Service Worker registrado con éxito.'))
+                .catch((err) => console.log('Error al registrar Service Worker:', err));
+        }
+
         const firebaseConfig = {
             databaseURL: "https://f1-multiplayer-default-rtdb.firebaseio.com/"
         };
