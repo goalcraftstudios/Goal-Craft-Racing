@@ -1,0 +1,688 @@
+# Goal-Craft-Racing
+Lanzamiento Goal Craft Racing
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>F1 Grand Prix - Online 1 vs 1</title>
+    
+    <!-- Firebase SDK (Versión modular CDN) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #0b0e14;
+            color: #ffffff;
+            overflow: hidden;
+            touch-action: none;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            max-width: 600px;
+            max-height: 950px;
+            background: #121721;
+            box-shadow: 0 0 40px rgba(0,0,0,0.8);
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Marca de agua superior fija en todas partes */
+        .watermark {
+            position: absolute;
+            top: 10px;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            font-size: 0.8rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: rgba(255, 255, 255, 0.4);
+            pointer-events: none;
+            z-index: 50;
+            text-shadow: 0 0 8px rgba(0,255,136,0.3);
+        }
+
+        canvas {
+            display: block;
+            background: #1a202c;
+            flex-grow: 1;
+            width: 100%;
+            height: 100%;
+        }
+
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(11, 14, 20, 0.96);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 20;
+            text-align: center;
+            padding: 25px;
+        }
+
+        .screen h1 {
+            font-size: 2.3rem;
+            color: #00ff88;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            text-shadow: 0 0 15px rgba(0,255,136,0.4);
+        }
+
+        .screen p {
+            color: #a0aec0;
+            font-size: 1rem;
+            margin-bottom: 25px;
+            max-width: 400px;
+            line-height: 1.5;
+        }
+
+        .input-box {
+            width: 100%;
+            max-width: 320px;
+            padding: 14px 18px;
+            background: #1a202c;
+            border: 2px solid #2d3748;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 1.1rem;
+            margin-bottom: 20px;
+            text-align: center;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .input-box:focus {
+            border-color: #00ff88;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #00ff88 0%, #00b8ff 100%);
+            color: #000000;
+            border: none;
+            padding: 15px 35px;
+            font-size: 1.2rem;
+            font-weight: 800;
+            border-radius: 12px;
+            cursor: pointer;
+            text-transform: uppercase;
+            box-shadow: 0 5px 20px rgba(0,255,136,0.3);
+            transition: transform 0.1s ease;
+            margin: 8px;
+        }
+
+        .btn:active {
+            transform: scale(0.96);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #ff3366 0%, #ff6b00 100%);
+            color: #ffffff;
+            box-shadow: 0 5px 20px rgba(255,51,102,0.3);
+        }
+
+        #hud {
+            position: absolute;
+            top: 35px;
+            left: 15px;
+            right: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+            pointer-events: none;
+            font-weight: 800;
+            font-size: 0.95rem;
+        }
+
+        .hud-box {
+            background: rgba(18, 23, 33, 0.85);
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 8px 14px;
+            border-radius: 8px;
+            backdrop-filter: blur(5px);
+        }
+
+        #controls-layer {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 150px;
+            z-index: 10;
+            pointer-events: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 25px 20px 25px;
+        }
+
+        .steering-group {
+            display: flex;
+            gap: 15px;
+            pointer-events: auto;
+        }
+
+        .ctrl-btn {
+            width: 75px;
+            height: 75px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.8rem;
+            color: #ffffff;
+            cursor: pointer;
+            touch-action: none;
+            backdrop-filter: blur(4px);
+        }
+
+        .ctrl-btn:active, .ctrl-btn.active {
+            background: rgba(0, 255, 136, 0.3);
+            border-color: #00ff88;
+            transform: scale(0.93);
+        }
+
+        #btn-turbo {
+            width: 85px;
+            height: 85px;
+            background: linear-gradient(135deg, #ff3366 0%, #ff6b00 100%);
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            pointer-events: auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: 900;
+            font-size: 0.95rem;
+            color: #ffffff;
+            box-shadow: 0 0 15px rgba(255, 51, 102, 0.5);
+            cursor: pointer;
+            touch-action: none;
+            text-transform: uppercase;
+        }
+
+        #btn-turbo:active, #btn-turbo.active {
+            transform: scale(0.93);
+            filter: brightness(1.2);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <!-- Marca de Agua Global Superior -->
+        <div class="watermark">By Goal Craft Studios Santino R.</div>
+
+        <div id="hud" style="display: none;">
+            <div class="hud-box" id="hud-mode">MODO: 1 VS 1</div>
+            <div class="hud-box" id="hud-lap">VUELTA: 1 / 3</div>
+            <div class="hud-box" id="hud-status">CONECTADO</div>
+        </div>
+
+        <canvas id="gameCanvas"></canvas>
+
+        <div id="controls-layer" style="display: none;">
+            <div class="steering-group">
+                <div class="ctrl-btn" id="btn-left">◀</div>
+                <div class="ctrl-btn" id="btn-right">▶</div>
+            </div>
+            <div id="btn-turbo">TURBO</div>
+        </div>
+
+        <!-- Pantallas -->
+        <div id="screen-login" class="screen">
+            <h1>F1 Grand Prix</h1>
+            <p>Ingresa tu nombre de piloto para registrarte.</p>
+            <input type="text" id="username-input" class="input-box" placeholder="Tu apodo..." maxlength="15">
+            <button class="btn" id="login-btn">Entrar</button>
+        </div>
+
+        <div id="screen-menu" class="screen" style="display: none;">
+            <h1>Menú Principal</h1>
+            <p id="welcome-user">Hola Piloto</p>
+            <button class="btn" id="mode-offline-btn">Contra la Máquina (Offline)</button>
+            <button class="btn btn-secondary" id="mode-online-btn">Online 1 vs 1</button>
+        </div>
+
+        <div id="screen-waiting" class="screen" style="display: none;">
+            <h1>Esperando Jugadores</h1>
+            <p id="waiting-status">Buscando sala disponible para 1 vs 1...</p>
+            <button class="btn btn-secondary" id="cancel-waiting-btn">Cancelar</button>
+        </div>
+
+        <div id="screen-error" class="screen" style="display: none;">
+            <h1>Error de Conexión</h1>
+            <p>No se detecta conexión a internet o falló la red global.</p>
+            <button class="btn" id="retry-net-btn">Reintentar</button>
+            <button class="btn btn-secondary" id="back-menu-btn">Volver al Menú</button>
+        </div>
+
+        <div id="screen-gameover" class="screen" style="display: none;">
+            <h1 id="go-title">¡Carrera Finalizada!</h1>
+            <p id="go-text">Has cruzado la meta.</p>
+            <button class="btn" id="restart-btn">Menú Principal</button>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            databaseURL: "https://f1-multiplayer-default-rtdb.firebaseio.com/"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function resize() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        let playerName = "Piloto";
+        let gameMode = 'OFFLINE'; 
+        let gameState = 'LOGIN'; 
+        let roomId = null;
+        let playerKey = null; 
+
+        let trackWaypoints = [
+            {x: 300, y: 750},
+            {x: 300, y: 200},
+            {x: 450, y: 120},
+            {x: 520, y: 300},
+            {x: 450, y: 550},
+            {x: 200, y: 650},
+            {x: 120, y: 400},
+            {x: 200, y: 200}
+        ];
+
+        let me = {
+            x: 300, y: 750,
+            angle: -Math.PI / 2,
+            speed: 0,
+            maxSpeed: 6.5,
+            accel: 0.1,
+            lap: 1,
+            turboFuel: 100,
+            isTurbo: false,
+            color: '#00ff88',
+            name: ''
+        };
+
+        let opponent = {
+            x: 330, y: 770,
+            angle: -Math.PI / 2,
+            speed: 0,
+            lap: 1,
+            color: '#ff3366',
+            name: 'Esperando...'
+        };
+
+        const maxLaps = 3;
+        let controls = { left: false, right: false, turbo: false };
+        let dbRef = null;
+
+        const screens = {
+            login: document.getElementById('screen-login'),
+            menu: document.getElementById('screen-menu'),
+            waiting: document.getElementById('screen-waiting'),
+            error: document.getElementById('screen-error'),
+            gameover: document.getElementById('screen-gameover')
+        };
+
+        function showScreen(name) {
+            Object.keys(screens).forEach(key => {
+                screens[key].style.display = (key === name) ? 'flex' : 'none';
+            });
+            let hud = document.getElementById('hud');
+            let clayer = document.getElementById('controls-layer');
+            if (name === 'PLAYING') {
+                hud.style.display = 'flex';
+                clayer.style.display = 'flex';
+            } else {
+                hud.style.display = 'none';
+                clayer.style.display = 'none';
+                if (dbRef && gameMode === 'ONLINE') { 
+                    db.ref(`rooms/${roomId}`).remove();
+                    dbRef.off(); 
+                    dbRef = null; 
+                }
+            }
+        }
+
+        document.getElementById('login-btn').addEventListener('click', () => {
+            let val = document.getElementById('username-input').value.trim();
+            if (val) playerName = val;
+            me.name = playerName;
+            document.getElementById('welcome-user').innerText = `Bienvenido, ${playerName}`;
+            showScreen('menu');
+        });
+
+        document.getElementById('mode-offline-btn').addEventListener('click', () => {
+            gameMode = 'OFFLINE';
+            opponent.name = 'CPU Bot';
+            startRace();
+        });
+
+        document.getElementById('mode-online-btn').addEventListener('click', () => {
+            gameMode = 'ONLINE';
+            findOrCreateMatch1v1();
+        });
+
+        document.getElementById('cancel-waiting-btn').addEventListener('click', () => {
+            if (dbRef) dbRef.remove();
+            showScreen('menu');
+        });
+
+        document.getElementById('retry-net-btn').addEventListener('click', () => {
+            findOrCreateMatch1v1();
+        });
+
+        document.getElementById('back-menu-btn').addEventListener('click', () => {
+            showScreen('menu');
+        });
+
+        document.getElementById('restart-btn').addEventListener('click', () => {
+            showScreen('menu');
+        });
+
+        function findOrCreateMatch1v1() {
+            if (!navigator.onLine) {
+                showScreen('error');
+                return;
+            }
+
+            showScreen('waiting');
+            let statusText = document.getElementById('waiting-status');
+            statusText.innerText = "Buscando sala 1 vs 1 disponible...";
+
+            const roomsRef = db.ref('rooms');
+            roomsRef.once('value', snapshot => {
+                let targetRoomId = null;
+
+                snapshot.forEach(childSnap => {
+                    let roomData = childSnap.val();
+                    if (roomData.status === 'waiting' && roomData.player1 && !roomData.player2) {
+                        targetRoomId = childSnap.key;
+                    }
+                });
+
+                if (targetRoomId) {
+                    roomId = targetRoomId;
+                    playerKey = 'player2';
+                    dbRef = db.ref(`rooms/${roomId}/player2`);
+                    
+                    dbRef.set({ name: me.name, x: 330, y: 770, angle: -Math.PI/2, lap: 1, speed: 0 });
+                    db.ref(`rooms/${roomId}/status`).set('playing');
+
+                    statusText.innerText = "¡Oponente encontrado! Entrando a la pista...";
+                    setTimeout(() => { startRace(); setupOnlineSync(); }, 1000);
+                } else {
+                    roomId = 'room_1v1_' + Math.floor(Math.random() * 100000);
+                    playerKey = 'player1';
+
+                    const newRoomRef = db.ref(`rooms/${roomId}`);
+                    newRoomRef.set({
+                        status: 'waiting',
+                        player1: { name: me.name, x: 300, y: 750, angle: -Math.PI/2, lap: 1, speed: 0 }
+                    });
+
+                    dbRef = db.ref(`rooms/${roomId}/player1`);
+                    statusText.innerText = "Esperando jugadores... (Sala 1 vs 1 abierta)";
+
+                    newRoomRef.child('player2').on('value', snap => {
+                        if (snap.exists() && gameState === 'WAITING') {
+                            newRoomRef.child('status').set('playing');
+                            statusText.innerText = "¡Segundo jugador conectado! Arrancando...";
+                            setTimeout(() => { startRace(); setupOnlineSync(); }, 1000);
+                        }
+                    });
+                }
+            });
+        }
+
+        function setupOnlineSync() {
+            let oppKey = (playerKey === 'player1') ? 'player2' : 'player1';
+            
+            db.ref(`rooms/${roomId}/${oppKey}`).on('value', snap => {
+                let data = snap.val();
+                if (data) {
+                    opponent.x = data.x;
+                    opponent.y = data.y;
+                    opponent.angle = data.angle;
+                    opponent.lap = data.lap;
+                    opponent.name = data.name;
+                    opponent.speed = data.speed;
+                }
+            });
+
+            db.ref(`rooms/${roomId}/${oppKey}`).on('child_removed', () => {
+                if (gameState === 'PLAYING') {
+                    alert("El oponente se ha desconectado.");
+                    showScreen('menu');
+                }
+            });
+        }
+
+        function startRace() {
+            showScreen('PLAYING');
+            gameState = 'PLAYING';
+            
+            if (playerKey === 'player2') {
+                me.x = 330; me.y = 770;
+            } else {
+                me.x = 300; me.y = 750;
+            }
+            me.angle = -Math.PI / 2;
+            me.speed = 0;
+            me.lap = 1;
+            me.turboFuel = 100;
+        }
+
+        const bindTouchButton = (id, controlKey) => {
+            let el = document.getElementById(id);
+            const start = (e) => { e.preventDefault(); controls[controlKey] = true; el.classList.add('active'); };
+            const end = (e) => { e.preventDefault(); controls[controlKey] = false; el.classList.remove('active'); };
+            el.addEventListener('pointerdown', start);
+            el.addEventListener('pointerup', end);
+            el.addEventListener('pointercancel', end);
+        };
+
+        bindTouchButton('btn-left', 'left');
+        bindTouchButton('btn-right', 'right');
+        bindTouchButton('btn-turbo', 'turbo');
+
+        window.addEventListener('keydown', e => {
+            if (e.key === 'ArrowLeft') controls.left = true;
+            if (e.key === 'ArrowRight') controls.right = true;
+            if (e.key === 'Shift' || e.key === ' ') controls.turbo = true;
+        });
+        window.addEventListener('keyup', e => {
+            if (e.key === 'ArrowLeft') controls.left = false;
+            if (e.key === 'ArrowRight') controls.right = false;
+            if (e.key === 'Shift' || e.key === ' ') controls.turbo = false;
+        });
+
+        function updateGame() {
+            if (gameState !== 'PLAYING') return;
+
+            let turnRate = 0.045;
+            if (controls.left) me.angle -= turnRate;
+            if (controls.right) me.angle += turnRate;
+
+            let currentMax = me.maxSpeed;
+            if (controls.turbo && me.turboFuel > 0) {
+                currentMax = me.maxSpeed * 1.8;
+                me.turboFuel -= 0.6;
+            } else {
+                if (me.turboFuel < 100) me.turboFuel += 0.1;
+            }
+
+            if (me.speed < currentMax) me.speed += me.accel;
+            else me.speed -= 0.05;
+
+            me.x += Math.sin(me.angle) * me.speed;
+            me.y -= Math.cos(me.angle) * me.speed;
+
+            if (gameMode === 'OFFLINE') {
+                let targetWp = trackWaypoints[opponent.waypointIndex || 0];
+                let dx = targetWp.x - opponent.x;
+                let dy = targetWp.y - opponent.y;
+                let targetAngle = Math.atan2(dx, -dy);
+                let angleDiff = targetAngle - opponent.angle;
+                while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+                while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+                opponent.angle += Math.max(-0.04, Math.min(0.04, angleDiff));
+                opponent.speed = 5.8;
+                opponent.x += Math.sin(opponent.angle) * opponent.speed;
+                opponent.y -= Math.cos(opponent.angle) * opponent.speed;
+                if (Math.hypot(opponent.x - targetWp.x, opponent.y - targetWp.y) < 70) {
+                    opponent.waypointIndex = ((opponent.waypointIndex || 0) + 1) % trackWaypoints.length;
+                    if (opponent.waypointIndex === 0) opponent.lap++;
+                }
+            }
+
+            let metaY = 750;
+            if (me.y < metaY && me.lastY >= metaY) {
+                me.lap++;
+                if (me.lap > maxLaps) {
+                    endRace(true);
+                }
+            }
+            me.lastY = me.y;
+
+            if (opponent.lap > maxLaps) {
+                endRace(false);
+            }
+
+            if (gameMode === 'ONLINE' && dbRef) {
+                dbRef.set({
+                    name: me.name,
+                    x: Math.round(me.x),
+                    y: Math.round(me.y),
+                    angle: Number(me.angle.toFixed(2)),
+                    lap: me.lap,
+                    speed: Number(me.speed.toFixed(1))
+                });
+            }
+
+            document.getElementById('hud-mode').innerText = `MODO: ${gameMode}`;
+            document.getElementById('hud-lap').innerText = `VUELTA: ${Math.min(me.lap, maxLaps)} / ${maxLaps}`;
+            let posStr = me.y < opponent.y ? "1/2" : "2/2";
+            document.getElementById('hud-status').innerText = `POS: ${posStr}`;
+        }
+
+        function endRace(playerWon) {
+            gameState = 'GAMEOVER';
+            document.getElementById('go-title').innerText = playerWon ? "¡Victoria Magistral!" : "¡Carrera Finalizada!";
+            document.getElementById('go-text').innerText = playerWon ? "¡Has cruzado la meta en primer lugar!" : `El piloto ${opponent.name} te ha ganado la partida. ¡Buen intento!`;
+            showScreen('gameover');
+            if (roomId && gameMode === 'ONLINE') db.ref(`rooms/${roomId}`).remove();
+        }
+
+        function drawTrackAndCars() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = '#161b22';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.beginPath();
+            ctx.moveTo(trackWaypoints[0].x, trackWaypoints[0].y);
+            for (let i = 1; i < trackWaypoints.length; i++) {
+                ctx.lineTo(trackWaypoints[i].x, trackWaypoints[i].y);
+            }
+            ctx.closePath();
+            ctx.strokeStyle = '#2d3748';
+            ctx.lineWidth = 90;
+            ctx.lineJoin = 'round';
+            ctx.stroke();
+
+            ctx.strokeStyle = '#21262d';
+            ctx.lineWidth = 74;
+            ctx.stroke();
+
+            ctx.strokeStyle = '#ff3366';
+            ctx.lineWidth = 8;
+            ctx.setLineDash([15, 15]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 8;
+            ctx.beginPath();
+            ctx.moveTo(230, 750);
+            ctx.lineTo(370, 750);
+            ctx.stroke();
+
+            drawF1Car(me.x, me.y, me.angle, me.color, me.name);
+            drawF1Car(opponent.x, opponent.y, opponent.angle, opponent.color, opponent.name);
+        }
+
+        function drawF1Car(x, y, angle, color, name) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(angle);
+
+            ctx.fillStyle = color;
+            ctx.fillRect(-10, -22, 20, 44);
+
+            ctx.fillStyle = '#0b0e14';
+            ctx.fillRect(-15, -16, 5, 12);
+            ctx.fillRect(10, -16, 5, 12);
+            ctx.fillRect(-15, 8, 5, 12);
+            ctx.fillRect(10, 8, 5, 12);
+
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(-12, -24, 24, 3);
+            ctx.fillRect(-10, 21, 20, 3);
+
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(-3, -4, 6, 10);
+
+            ctx.restore();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 11px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(name, x, y - 32);
+        }
+
+        function mainLoop() {
+            updateGame();
+            drawTrackAndCars();
+            requestAnimationFrame(mainLoop);
+        }
+
+        mainLoop();
+    </script>
+</body>
+</html>
